@@ -1,9 +1,14 @@
+import pytest
+
 from asterinis.agents import (
     EntityConsistencyAgent,
+    ContradictionAgent,
     ExplainabilityAgent,
     FallbackAgent,
     NLPRouterAgent,
     QueryDecompositionAgent,
+    QueryPlanStep,
+    QueryPlannerAgent,
     VerificationAgent,
 )
 
@@ -124,3 +129,108 @@ def test_explainability_agent() -> None:
     assert explanation.route == "rag"
     assert explanation.decision == "generate"
     assert explanation.confidence == 0.91
+
+
+def test_query_planner_builds_valid_plan() -> None:
+    def planner(query: str, context: dict) -> list[QueryPlanStep]:
+        return [
+            QueryPlanStep(
+                action="retrieve",
+                input=query,
+                reason="Retrieve evidence.",
+            )
+        ]
+
+    agent = QueryPlannerAgent(planner)
+    plan = agent.plan("Test query")
+
+    assert plan.query == "Test query"
+    assert plan.step_count == 1
+    assert plan.steps[0].action == "retrieve"
+
+
+def test_query_planner_enforces_max_steps() -> None:
+    def planner(query: str, context: dict) -> list[QueryPlanStep]:
+        return [
+            QueryPlanStep(
+                action="retrieve",
+                input=query,
+                reason="Retrieve evidence.",
+            ),
+            QueryPlanStep(
+                action="verify",
+                input=query,
+                reason="Verify evidence.",
+            ),
+        ]
+
+    agent = QueryPlannerAgent(planner, max_steps=1)
+
+    with pytest.raises(ValueError):
+        agent.plan("Test query")
+
+
+def test_query_planner_rejects_disallowed_action() -> None:
+    def planner(query: str, context: dict) -> list[QueryPlanStep]:
+        return [
+            QueryPlanStep(
+                action="delete_everything",
+                input=query,
+                reason="Invalid test action.",
+            )
+        ]
+
+    agent = QueryPlannerAgent(planner)
+
+    with pytest.raises(ValueError):
+        agent.plan("Test query")
+
+
+def test_contradiction_agent_detects_conflict() -> None:
+    def comparator(first: str, second: str) -> float:
+        if "Berlin" in first and "Frankfurt" in second:
+            return 0.95
+        if "Frankfurt" in first and "Berlin" in second:
+            return 0.95
+        return 0.10
+
+    agent = ContradictionAgent(comparator, threshold=0.80)
+    result = agent.evaluate(
+        [
+            "The company is based in Berlin.",
+            "The company is based in Frankfurt.",
+        ]
+    )
+
+    assert result.detected
+    assert result.severity == 0.95
+    assert len(result.pairs) == 1
+
+
+def test_contradiction_agent_reports_no_conflict() -> None:
+    agent = ContradictionAgent(
+        lambda first, second: 0.10,
+        threshold=0.80,
+    )
+    result = agent.evaluate(
+        [
+            "Asterinis supports RAG.",
+            "Asterinis supports agents.",
+        ]
+    )
+
+    assert not result.detected
+    assert result.severity == 0.0
+    assert result.pairs == []
+
+
+def test_contradiction_agent_rejects_invalid_score() -> None:
+    agent = ContradictionAgent(lambda first, second: 1.5)
+
+    with pytest.raises(ValueError):
+        agent.evaluate(
+            [
+                "First statement.",
+                "Second statement.",
+            ]
+        )
