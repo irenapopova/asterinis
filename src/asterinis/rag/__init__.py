@@ -1,4 +1,8 @@
 from .base import Retriever
+from .adaptive import (
+    AdaptiveRetrievalDecision,
+    AdaptiveRetriever,
+)
 from .bm25 import BM25Retriever
 from .consensus import (
     ConsensusResult,
@@ -17,6 +21,8 @@ __all__ = [
     "Document",
     "Retriever",
     "InMemoryRetriever",
+    "AdaptiveRetrievalDecision",
+    "AdaptiveRetriever",
     "BM25Retriever",
     "ConsensusResult",
     "ConsensusRetriever",

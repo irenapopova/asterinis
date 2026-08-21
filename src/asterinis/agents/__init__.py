@@ -48,6 +48,10 @@ from .retrieval_quality import (
     RetrievalQualityDecision,
 )
 from .router import AgentRouter
+from .source_verification import (
+    SourceVerificationAgent,
+    SourceVerificationSummary,
+)
 from .task import AgentTask
 from .tool import Tool
 from .verification import (
@@ -87,6 +91,8 @@ __all__ = [
     "QueryPlanStep",
     "RetrievalQualityAgent",
     "RetrievalQualityDecision",
+    "SourceVerificationAgent",
+    "SourceVerificationSummary",
     "Tool",
     "VerificationAgent",
     "VerificationResult",
