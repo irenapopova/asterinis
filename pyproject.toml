@@ -48,6 +48,10 @@ flair = [
     "flair>=0.15"
 ]
 
+prometheus = [
+    "prometheus-client>=0.20"
+]
+
 dev = [
     "pytest>=8.0",
     "build>=1.2",
