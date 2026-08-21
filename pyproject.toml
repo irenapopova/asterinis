@@ -1,1 +1,67 @@
-license = { text = "MIT" }
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "asterinis"
+version = "0.0.1"
+description = "Python framework for AI orchestration, RAG, NLP integration, agent routing, and explainable AI."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+
+authors = [
+    { name = "Irena Popova" }
+]
+
+keywords = [
+    "ai",
+    "rag",
+    "nlp",
+    "agents",
+    "llm",
+    "orchestration",
+    "flair",
+    "machine-learning",
+    "python"
+]
+
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules"
+]
+
+dependencies = []
+
+[project.optional-dependencies]
+flair = [
+    "flair>=0.15"
+]
+
+dev = [
+    "pytest>=8.0",
+    "build>=1.2",
+    "twine>=5.0"
+]
+
+[project.urls]
+Homepage = "https://github.com/irenapopova/asterinis"
+Repository = "https://github.com/irenapopova/asterinis"
+Issues = "https://github.com/irenapopova/asterinis/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
