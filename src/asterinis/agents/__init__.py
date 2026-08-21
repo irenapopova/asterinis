@@ -3,6 +3,11 @@ from .confidence import (
     ConfidenceAgent,
     ConfidenceDecision,
 )
+from .contradiction import (
+    ContradictionAgent,
+    ContradictionPair,
+    ContradictionResult,
+)
 from .context import AgentContext
 from .coordinator import AgentCoordinator
 from .entity_consistency import (
@@ -32,6 +37,11 @@ from .query_decomposition import (
     QueryDecompositionAgent,
     QueryDecompositionResult,
 )
+from .query_planner import (
+    QueryPlan,
+    QueryPlannerAgent,
+    QueryPlanStep,
+)
 from .result import AgentResult
 from .retrieval_quality import (
     RetrievalQualityAgent,
@@ -56,6 +66,9 @@ __all__ = [
     "AgentTask",
     "ConfidenceAgent",
     "ConfidenceDecision",
+    "ContradictionAgent",
+    "ContradictionPair",
+    "ContradictionResult",
     "EntityConsistencyAgent",
     "EntityConsistencyResult",
     "EntityRetrievalAgent",
@@ -69,6 +82,9 @@ __all__ = [
     "NLPRoutingRule",
     "QueryDecompositionAgent",
     "QueryDecompositionResult",
+    "QueryPlan",
+    "QueryPlannerAgent",
+    "QueryPlanStep",
     "RetrievalQualityAgent",
     "RetrievalQualityDecision",
     "Tool",
