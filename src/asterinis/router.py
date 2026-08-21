@@ -1,76 +1,85 @@
 from collections.abc import Callable
+from dataclasses import dataclass
 
 
-RouteRule = Callable[[str], bool]
+RoutePredicate = Callable[[str], bool]
+
+
+@dataclass(slots=True)
+class Route:
+    """
+    Represents a routing rule inside Asterinis.
+    """
+
+    name: str
+    predicate: RoutePredicate
+    priority: int = 0
 
 
 class Router:
+    """
+    Lightweight and extensible request router.
+
+    Routes are evaluated by priority, with higher-priority
+    routes evaluated first.
+    """
+
     def __init__(self, default_route: str = "llm"):
         self.default_route = default_route
-        self._rules: list[tuple[str, RouteRule]] = []
+        self._routes: list[Route] = []
 
-        self._register_default_rules()
-
-    def _register_default_rules(self) -> None:
-        self.add_route(
-            "rag",
-            lambda text: any(
-                word in text.lower()
-                for word in (
-                    "document",
-                    "source",
-                    "retrieve",
-                    "search",
-                )
-            ),
-        )
-
-        self.add_route(
-            "nlp",
-            lambda text: any(
-                word in text.lower()
-                for word in (
-                    "entity",
-                    "ner",
-                    "language",
-                    "nlp",
-                )
-            ),
-        )
-
-        self.add_route(
-            "agent",
-            lambda text: any(
-                word in text.lower()
-                for word in (
-                    "agent",
-                    "tool",
-                    "workflow",
-                )
-            ),
-        )
-
-    def add_route(
+    def register(
         self,
         name: str,
-        rule: RouteRule,
+        predicate: RoutePredicate,
         *,
-        first: bool = False,
+        priority: int = 0,
     ) -> None:
-        route = (name, rule)
+        """
+        Register a new route.
+        """
 
-        if first:
-            self._rules.insert(0, route)
-        else:
-            self._rules.append(route)
+        if not isinstance(name, str):
+            raise TypeError("Route name must be a string.")
 
-    def route(self, text: str) -> str:
-        for name, rule in self._rules:
-            if rule(text):
-                return name
+        name = name.strip()
+
+        if not name:
+            raise ValueError("Route name cannot be empty.")
+
+        if not callable(predicate):
+            raise TypeError("Route predicate must be callable.")
+
+        self._routes.append(
+            Route(
+                name=name,
+                predicate=predicate,
+                priority=priority,
+            )
+        )
+
+        self._routes.sort(
+            key=lambda route: route.priority,
+            reverse=True,
+        )
+
+    def resolve(self, text: str) -> str:
+        """
+        Determine which route should handle the given text.
+        """
+
+        if not isinstance(text, str):
+            raise TypeError("Text must be a string.")
+
+        for route in self._routes:
+            if route.predicate(text):
+                return route.name
 
         return self.default_route
 
     @property
-    def routes(self) -> list[str]:
-        return [name for name, _ in self._rules]
+    def routes(self) -> tuple[str, ...]:
+        """
+        Return all registered route names.
+        """
+        return tuple(route.name for route in self._routes)

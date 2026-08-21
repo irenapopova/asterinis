@@ -1,31 +1,81 @@
-from typing import Dict
-
-from .connectors import Connector
+from .providers import Provider
 
 
-class ConnectorRegistry:
+class ProviderRegistry:
+    """
+    Registry for providers used by Asterinis.
+
+    Providers can represent NLP libraries, LLM services,
+    retrieval systems, agents, or other processing backends.
+    """
+
     def __init__(self):
-        self._connectors: Dict[str, Connector] = {}
+        self._providers: dict[str, Provider] = {}
 
-    def register(self, name: str, connector: Connector) -> None:
+    def register(
+        self,
+        name: str,
+        provider: Provider,
+        *,
+        replace: bool = False,
+    ) -> None:
+        """
+        Register a provider under a unique name.
+        """
+
+        if not isinstance(name, str):
+            raise TypeError("Provider name must be a string.")
+
+        name = name.strip()
+
         if not name:
-            raise ValueError("Connector name cannot be empty.")
+            raise ValueError("Provider name cannot be empty.")
 
-        self._connectors[name] = connector
-
-    def get(self, name: str) -> Connector:
-        if name not in self._connectors:
-            raise KeyError(
-                f"Connector '{name}' is not registered."
+        if name in self._providers and not replace:
+            raise ValueError(
+                f"Provider '{name}' is already registered."
             )
 
-        return self._connectors[name]
+        self._providers[name] = provider
+
+    def get(self, name: str) -> Provider:
+        """
+        Return a registered provider.
+        """
+
+        try:
+            return self._providers[name]
+        except KeyError as exc:
+            raise KeyError(
+                f"Provider '{name}' is not registered."
+            ) from exc
 
     def remove(self, name: str) -> None:
-        self._connectors.pop(name, None)
+        """
+        Remove a provider if it exists.
+        """
+        self._providers.pop(name, None)
 
-    def exists(self, name: str) -> bool:
-        return name in self._connectors
+    def contains(self, name: str) -> bool:
+        """
+        Check whether a provider is registered.
+        """
+        return name in self._providers
 
-    def list(self) -> list[str]:
-        return list(self._connectors.keys())
+    def names(self) -> tuple[str, ...]:
+        """
+        Return all registered provider names.
+        """
+        return tuple(self._providers.keys())
+
+    def clear(self) -> None:
+        """
+        Remove all registered providers.
+        """
+        self._providers.clear()
+
+    def __len__(self) -> int:
+        return len(self._providers)
+
+    def __contains__(self, name: str) -> bool:
+        return name in self._providers
