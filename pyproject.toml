@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "asterinis"
-version = "0.0.1"
+version = "0.0.2"
 description = "Python framework for AI orchestration, RAG, NLP integration, agent routing, and explainable AI."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -30,7 +30,6 @@ classifiers = [
     "Development Status :: 2 - Pre-Alpha",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",

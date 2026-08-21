@@ -5,12 +5,29 @@ from .confidence import (
 )
 from .context import AgentContext
 from .coordinator import AgentCoordinator
+from .entity_consistency import (
+    EntityConsistencyAgent,
+    EntityConsistencyResult,
+)
 from .entity_retrieval import (
     EntityRetrievalAgent,
     EntityRetrievalResult,
 )
+from .explainability import (
+    ExplainabilityAgent,
+    Explanation,
+)
+from .fallback import (
+    FallbackAgent,
+    FallbackResult,
+)
 from .manager import AgentManager
 from .memory import AgentMemory
+from .nlp_router import (
+    NLPRouterAgent,
+    NLPRoutingDecision,
+    NLPRoutingRule,
+)
 from .query_decomposition import (
     QueryDecompositionAgent,
     QueryDecompositionResult,
@@ -23,6 +40,10 @@ from .retrieval_quality import (
 from .router import AgentRouter
 from .task import AgentTask
 from .tool import Tool
+from .verification import (
+    VerificationAgent,
+    VerificationResult,
+)
 
 __all__ = [
     "Agent",
@@ -35,11 +56,22 @@ __all__ = [
     "AgentTask",
     "ConfidenceAgent",
     "ConfidenceDecision",
+    "EntityConsistencyAgent",
+    "EntityConsistencyResult",
     "EntityRetrievalAgent",
     "EntityRetrievalResult",
+    "ExplainabilityAgent",
+    "Explanation",
+    "FallbackAgent",
+    "FallbackResult",
+    "NLPRouterAgent",
+    "NLPRoutingDecision",
+    "NLPRoutingRule",
     "QueryDecompositionAgent",
     "QueryDecompositionResult",
     "RetrievalQualityAgent",
     "RetrievalQualityDecision",
     "Tool",
+    "VerificationAgent",
+    "VerificationResult",
 ]
