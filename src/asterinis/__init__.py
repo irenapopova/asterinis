@@ -5,6 +5,7 @@ from .exceptions import (
     AsterinisError,
     ConnectorError,
     PipelineError,
+    ProviderTimeoutError,
     RoutingError,
 )
 from .hooks import HookManager
@@ -28,6 +29,7 @@ __all__ = [
     "NexusResult",
     "Pipeline",
     "PipelineError",
+    "ProviderTimeoutError",
     "Router",
     "RoutingError",
 ]

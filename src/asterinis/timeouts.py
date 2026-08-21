@@ -4,12 +4,14 @@ import asyncio
 from collections.abc import Awaitable
 from typing import TypeVar
 
+from .exceptions import ProviderTimeoutError
+
 
 T = TypeVar("T")
 
 
-class AsterinisTimeoutError(TimeoutError):
-    """Raised when an Asterinis operation exceeds its timeout."""
+# Backward-compatible name. ProviderTimeoutError is the canonical exception.
+AsterinisTimeoutError = ProviderTimeoutError
 
 
 async def with_timeout(
@@ -29,7 +31,7 @@ async def with_timeout(
             timeout=timeout_seconds,
         )
     except asyncio.TimeoutError as exc:
-        raise AsterinisTimeoutError(
+        raise ProviderTimeoutError(
             f"{operation_name} exceeded the "
             f"{timeout_seconds:g} second timeout."
         ) from exc

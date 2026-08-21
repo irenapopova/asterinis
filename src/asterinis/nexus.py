@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from .config import AsterinisConfig
+from .async_providers import invoke_provider
 from .registry import ProviderRegistry
 from .result import NexusResult
 from .router import Router as BaseRouter
@@ -107,6 +108,51 @@ class Nexus:
         provider = self.providers.get(route)
         output = provider.invoke(
             text,
+            metadata=request_metadata,
+        )
+
+        return NexusResult(
+            route=route,
+            provider=provider.name,
+            output=output,
+            metadata=request_metadata,
+        )
+
+    async def process_async(
+        self,
+        text: str,
+        *,
+        metadata: dict[str, Any] | None = None,
+        timeout_seconds: float | None = None,
+    ) -> NexusResult:
+        if not isinstance(text, str):
+            raise TypeError("text must be a string.")
+
+        text = text.strip()
+        if not text:
+            raise ValueError("text cannot be empty.")
+
+        route = self.router.resolve(text)
+        request_metadata = metadata or {}
+
+        if not self.providers.contains(route):
+            return NexusResult(
+                route=route,
+                provider=None,
+                output=None,
+                metadata={
+                    **request_metadata,
+                    "message": (
+                        f"No provider registered for route '{route}'."
+                    ),
+                },
+            )
+
+        provider = self.providers.get(route)
+        output = await invoke_provider(
+            provider,
+            text,
+            timeout_seconds=timeout_seconds,
             metadata=request_metadata,
         )
 

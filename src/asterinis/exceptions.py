@@ -22,7 +22,7 @@ class ProviderError(AsterinisError):
     """Raised when a provider fails to process a request."""
 
 
-class ProviderTimeoutError(ProviderError):
+class ProviderTimeoutError(ProviderError, TimeoutError):
     """Raised when a provider exceeds its configured timeout."""
 
 

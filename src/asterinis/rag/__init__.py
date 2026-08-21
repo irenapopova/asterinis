@@ -4,6 +4,11 @@ from .adaptive import (
     AdaptiveRetriever,
 )
 from .bm25 import BM25Retriever
+from .citations import (
+    Citation,
+    CitationBuilder,
+    CitationBundle,
+)
 from .consensus import (
     ConsensusResult,
     ConsensusRetriever,
@@ -15,7 +20,22 @@ from .fusion import (
     FusionSource,
     ReciprocalRankFusionRetriever,
 )
+from .iterative import (
+    IterativeRetrievalResult,
+    IterativeRetriever,
+    RetrievalAttempt,
+)
+from .metadata_filter import (
+    MetadataFilter,
+    MetadataFilterResult,
+    MetadataFilterSet,
+)
 from .retriever import InMemoryRetriever
+from .source_selector import (
+    SourceScore,
+    SourceSelectionResult,
+    SourceSelector,
+)
 
 __all__ = [
     "Document",
@@ -24,10 +44,22 @@ __all__ = [
     "AdaptiveRetrievalDecision",
     "AdaptiveRetriever",
     "BM25Retriever",
+    "Citation",
+    "CitationBuilder",
+    "CitationBundle",
     "ConsensusResult",
     "ConsensusRetriever",
     "ConsensusSource",
     "FusionSource",
     "ReciprocalRankFusionRetriever",
     "RetrieverVote",
+    "IterativeRetrievalResult",
+    "IterativeRetriever",
+    "RetrievalAttempt",
+    "MetadataFilter",
+    "MetadataFilterResult",
+    "MetadataFilterSet",
+    "SourceScore",
+    "SourceSelectionResult",
+    "SourceSelector",
 ]
