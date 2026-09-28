@@ -16,6 +16,8 @@ from .intent import (
     IntentResult,
 )
 from .pipeline import NLPPipeline
+from .registry import NLPProviderProfile, NLPProviderRegistry
+from .router import NLPProviderSelection, NLPTaskRouter
 from .result import (
     Classification,
     Entity,
@@ -31,7 +33,11 @@ __all__ = [
     "IntentResult",
     "NLPPipeline",
     "NLPProvider",
+    "NLPProviderProfile",
+    "NLPProviderRegistry",
     "NLPResult",
+    "NLPProviderSelection",
+    "NLPTaskRouter",
     "QueryComplexityAnalyzer",
     "TextClassifier",
     "entities_by_label",
