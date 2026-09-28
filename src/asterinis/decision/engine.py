@@ -6,6 +6,7 @@ from typing import Any, Callable
 
 from asterinis.exceptions import RoutingError
 from asterinis.learning import StrategyRecord, StrategyStore
+from asterinis.resilience import CircuitBreaker, retry_call
 
 from .policies import DecisionPolicy
 from .result import Decision
@@ -29,8 +30,15 @@ class DecisionEngine:
     """Explainable provider selection across NLP, RAG, agents, and LLMs."""
 
     def __init__(self, *, learning_store: StrategyStore | None = None) -> None:
-        self.learning_store = learning_store or StrategyStore()
+        # SQLiteStrategyStore implements __len__, so an empty store is falsey.
+        # Check explicitly so an injected empty persistent store is preserved.
+        self.learning_store = (
+            learning_store
+            if learning_store is not None
+            else StrategyStore()
+        )
         self._options: dict[str, ProviderOption] = {}
+        self._breakers: dict[str, CircuitBreaker] = {}
 
     def register(self, option: ProviderOption, *, replace: bool = False) -> None:
         if not 0.0 <= option.quality <= 1.0:
@@ -40,6 +48,7 @@ class DecisionEngine:
         if option.name in self._options and not replace:
             raise ValueError(f"Provider '{option.name}' is already registered.")
         self._options[option.name] = option
+        self._breakers.pop(option.name, None)
 
     def decide(
         self,
@@ -112,8 +121,29 @@ class DecisionEngine:
         decision = self.decide(capability, policy=policy)
         option = self._options[decision.provider]
         started = perf_counter()
+        breaker = self._breakers.setdefault(
+            option.name,
+            CircuitBreaker(
+                failure_threshold=(
+                    policy.circuit_failure_threshold
+                    if policy is not None
+                    else 3
+                ),
+                recovery_seconds=(
+                    policy.circuit_recovery_seconds
+                    if policy is not None
+                    else 30.0
+                ),
+            ),
+        )
         try:
-            output = option.handler(text)
+            output = breaker.call(
+                lambda: retry_call(
+                    lambda: option.handler(text),
+                    attempts=policy.retry_attempts if policy else 1,
+                    delay_seconds=policy.retry_delay_seconds if policy else 0.0,
+                )
+            )
         except Exception:
             self.learning_store.add(
                 StrategyRecord(

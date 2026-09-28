@@ -2,6 +2,7 @@ import pytest
 
 from asterinis.decision import DecisionEngine, DecisionPolicy, ProviderOption
 from asterinis.exceptions import RoutingError
+from asterinis.resilience import CircuitBreaker, CircuitOpenError, retry_call
 
 
 def test_decision_engine_explains_selection() -> None:
@@ -69,3 +70,55 @@ def test_decision_engine_records_performance() -> None:
     assert decision.provider == "local-classifier"
     assert output == "positive"
     assert len(engine.learning_store) == 1
+
+
+def test_retry_call_retries_until_success() -> None:
+    attempts = []
+
+    def operation() -> str:
+        attempts.append(True)
+        if len(attempts) < 3:
+            raise RuntimeError("temporary")
+        return "ok"
+
+    assert retry_call(operation, attempts=3) == "ok"
+    assert len(attempts) == 3
+
+
+def test_circuit_breaker_opens_after_failures() -> None:
+    breaker = CircuitBreaker(failure_threshold=2, recovery_seconds=60)
+
+    for _ in range(2):
+        with pytest.raises(RuntimeError):
+            breaker.call(lambda: (_ for _ in ()).throw(RuntimeError("down")))
+
+    with pytest.raises(CircuitOpenError):
+        breaker.call(lambda: "unreachable")
+
+
+def test_decision_engine_retries_handler() -> None:
+    engine = DecisionEngine()
+    calls = []
+
+    def flaky(text: str) -> str:
+        calls.append(text)
+        if len(calls) == 1:
+            raise RuntimeError("temporary")
+        return "success"
+
+    engine.register(
+        ProviderOption(
+            name="flaky-local",
+            capability="classification",
+            handler=flaky,
+        )
+    )
+
+    _, output = engine.execute(
+        "hello",
+        "classification",
+        policy=DecisionPolicy(retry_attempts=2),
+    )
+
+    assert output == "success"
+    assert len(calls) == 2

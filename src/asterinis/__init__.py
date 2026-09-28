@@ -9,6 +9,7 @@ from .exceptions import (
     RoutingError,
 )
 from .hooks import HookManager
+from .learning_platform import LearningPlatform, LearningResponse
 from .nexus import Nexus
 from .pipeline import Pipeline
 from .result import NexusResult
@@ -24,6 +25,8 @@ __all__ = [
     "ConnectorError",
     "EchoConnector",
     "HookManager",
+    "LearningPlatform",
+    "LearningResponse",
     "Nexus",
     "NexusContext",
     "NexusResult",

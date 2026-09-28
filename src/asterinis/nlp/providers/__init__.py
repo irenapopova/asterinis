@@ -5,6 +5,7 @@ from .local import (
     LanguageNLPProvider,
     SentimentNLPProvider,
 )
+from .neural import NeuralNERProvider
 from .optional import (
     FastTextLanguageProvider,
     SentenceTransformerEmbeddingProvider,
@@ -13,6 +14,7 @@ from .optional import (
 
 __all__ = [
     "FlairNLPProvider",
+    "NeuralNERProvider",
     "EmbeddingNLPProvider",
     "FastTextLanguageProvider",
     "LanguageNLPProvider",

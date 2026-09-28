@@ -20,6 +20,11 @@ from .embeddings import EmbeddingResult, HashEmbeddingProvider
 from .evaluation import NLPEvaluation, evaluate_labels
 from .language import LanguageDetector, LanguageResult
 from .models import ModelCard, NLPModelRegistry, normalize_confidence
+from .native_sequence import (
+    NativeSequenceTagger,
+    NativeSequenceTaggerConfig,
+    TokenPrediction,
+)
 from .pipeline import NLPPipeline
 from .registry import NLPProviderProfile, NLPProviderRegistry
 from .router import NLPProviderSelection, NLPTaskRouter
@@ -29,11 +34,22 @@ from .result import (
     NLPResult,
 )
 from .sentiment import SentimentAnalyzer, SentimentResult
-from .training import NLPTrainer, TrainingConfig, TrainingResult
+from .training import (
+    Annotation,
+    NLPTrainer,
+    TrainingBackend,
+    TrainingConfig,
+    TrainingCorpus,
+    TrainingResult,
+    TrainingRunConfig,
+    TrainingSample,
+    TrainingTask,
+)
 
 __all__ = [
     "Classification",
     "ClassificationResult",
+    "Annotation",
     "ComplexityResult",
     "Entity",
     "EmbeddingResult",
@@ -44,6 +60,8 @@ __all__ = [
     "LanguageDetector",
     "LanguageResult",
     "ModelCard",
+    "NativeSequenceTagger",
+    "NativeSequenceTaggerConfig",
     "NLPModelRegistry",
     "NLPPipeline",
     "NLPProvider",
@@ -58,7 +76,13 @@ __all__ = [
     "SentimentResult",
     "NLPTrainer",
     "TrainingConfig",
+    "TrainingBackend",
+    "TrainingCorpus",
     "TrainingResult",
+    "TrainingRunConfig",
+    "TrainingSample",
+    "TrainingTask",
+    "TokenPrediction",
     "evaluate_labels",
     "normalize_confidence",
     "TextClassifier",

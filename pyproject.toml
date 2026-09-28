@@ -47,6 +47,10 @@ flair = [
     "flair>=0.15"
 ]
 
+neural = [
+    "torch>=2.2"
+]
+
 prometheus = [
     "prometheus-client>=0.20"
 ]
