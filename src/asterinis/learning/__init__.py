@@ -8,6 +8,7 @@ from .selector import (
     AdaptiveStrategySelector,
     StrategySelection,
 )
+from .sqlite_store import SQLiteStrategyStore
 from .store import StrategyStore
 
 __all__ = [
@@ -17,5 +18,6 @@ __all__ = [
     "StrategyScore",
     "StrategyScorer",
     "StrategySelection",
+    "SQLiteStrategyStore",
     "StrategyStore",
 ]

@@ -8,6 +8,8 @@ from asterinis.nlp import (
     NLPResult,
     NLPTaskRouter,
 )
+from asterinis.nlp.providers import TextClassifierProvider
+from asterinis.nlp.classification import TextClassifier
 
 
 class StubProvider(NLPProvider):
@@ -110,3 +112,101 @@ def test_nlp_router_rejects_unsupported_task() -> None:
 
     with pytest.raises(RoutingError):
         router.select("ner")
+
+
+def test_text_classifier_provider_adapts_to_nlp_result() -> None:
+    classifier = TextClassifier(
+        lambda text: [
+            ("positive", 0.9),
+            ("negative", 0.1),
+        ]
+    )
+    provider = TextClassifierProvider(
+        classifier,
+        name="local-classifier",
+    )
+
+    result = provider.analyze("This is excellent.")
+
+    assert result.classifications[0].label == "positive"
+    assert result.confidence == 0.5
+    assert result.metadata["provider"] == "local-classifier"
+
+
+def test_text_classifier_provider_works_with_task_router() -> None:
+    provider = TextClassifierProvider(
+        TextClassifier(lambda text: [("positive", 0.95)]),
+        name="local-classifier",
+    )
+    router = NLPTaskRouter()
+    router.register(
+        "local-classifier",
+        provider,
+        capabilities={"classification"},
+        cost=0.0,
+    )
+
+    result = router.analyze(
+        "This is excellent.",
+        task="classification",
+    )
+
+    assert result.classifications[0].label == "positive"
+    assert result.metadata["provider"] == "local-classifier"
+
+
+def test_nlp_router_learns_from_provider_feedback() -> None:
+    router = NLPTaskRouter()
+    router.register(
+        "local",
+        StubProvider("local"),
+        capabilities={"classification"},
+        quality=0.80,
+    )
+    router.register(
+        "flair",
+        StubProvider("flair"),
+        capabilities={"classification"},
+        quality=0.90,
+    )
+
+    for _ in range(3):
+        router.record_feedback(
+            "local",
+            "classification",
+            success=True,
+            quality=1.0,
+            confidence=1.0,
+            latency_ms=5.0,
+            cost=0.0,
+        )
+        router.record_feedback(
+            "flair",
+            "classification",
+            success=False,
+            quality=0.0,
+            confidence=0.0,
+            latency_ms=100.0,
+            cost=0.01,
+        )
+
+    selection = router.select("classification")
+
+    assert selection.provider == "local"
+    assert selection.metadata["learning_samples"] == 3
+
+
+def test_nlp_router_records_feedback_after_analysis() -> None:
+    router = NLPTaskRouter()
+    router.register(
+        "local",
+        StubProvider("local"),
+        capabilities={"classification"},
+    )
+
+    router.analyze("A simple sentence.", task="classification")
+
+    records = router.learning_store.for_strategy("local")
+    assert len(records) == 1
+    assert records[0].query_type == "classification"
+    assert records[0].success

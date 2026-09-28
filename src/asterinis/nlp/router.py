@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from time import perf_counter
 from typing import Any
 
 from asterinis.exceptions import RoutingError
 
 from .registry import NLPProviderProfile, NLPProviderRegistry
+from asterinis.learning import StrategyRecord, StrategyScorer, StrategyStore
 
 
 @dataclass(slots=True)
@@ -25,8 +27,57 @@ class NLPTaskRouter:
     def __init__(
         self,
         registry: NLPProviderRegistry | None = None,
+        *,
+        learning_store: StrategyStore | None = None,
+        learning_scorer: StrategyScorer | None = None,
+        minimum_learning_samples: int = 1,
     ) -> None:
         self.registry = registry or NLPProviderRegistry()
+        if minimum_learning_samples < 1:
+            raise ValueError(
+                "minimum_learning_samples must be greater than zero."
+            )
+        self.learning_store = learning_store or StrategyStore()
+        self.learning_scorer = learning_scorer or StrategyScorer()
+        self.minimum_learning_samples = minimum_learning_samples
+
+    def record_feedback(
+        self,
+        provider: str,
+        task: str,
+        *,
+        success: bool,
+        quality: float | None = None,
+        latency_ms: float | None = None,
+        cost: float | None = None,
+        confidence: float | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
+        """Record one provider outcome for future routing decisions."""
+        provider = provider.strip()
+        task = task.strip().lower()
+
+        if not provider:
+            raise ValueError("provider cannot be empty.")
+        if not task:
+            raise ValueError("task cannot be empty.")
+
+        self.learning_store.add(
+            StrategyRecord(
+                strategy=provider,
+                query_type=task,
+                success=success,
+                quality_score=quality,
+                latency_seconds=(
+                    latency_ms / 1000.0
+                    if latency_ms is not None
+                    else None
+                ),
+                cost=cost,
+                confidence=confidence,
+                metadata=metadata or {},
+            )
+        )
 
     def register(
         self,
@@ -91,15 +142,42 @@ class NLPTaskRouter:
                 f"No available NLP provider supports '{task}'."
             )
 
-        candidates.sort(
-            key=lambda item: (-item.quality, item.cost, item.latency_ms)
+        scored_candidates: list[tuple[NLPProviderProfile, float, int]] = []
+        for candidate in candidates:
+            history = tuple(
+                record
+                for record in self.learning_store.for_strategy(candidate.name)
+                if record.query_type == task
+            )
+            if len(history) >= self.minimum_learning_samples:
+                learned_score = self.learning_scorer.score(
+                    candidate.name,
+                    history,
+                ).score
+                effective_quality = (
+                    candidate.quality + learned_score
+                ) / 2.0
+                sample_count = len(history)
+            else:
+                effective_quality = candidate.quality
+                sample_count = 0
+            scored_candidates.append(
+                (candidate, effective_quality, sample_count)
+            )
+
+        scored_candidates.sort(
+            key=lambda item: (
+                -item[1],
+                item[0].cost,
+                item[0].latency_ms,
+            )
         )
-        selected = candidates[0]
+        selected, effective_quality, sample_count = scored_candidates[0]
 
         return NLPProviderSelection(
             provider=selected.name,
             capability=task,
-            quality=selected.quality,
+            quality=effective_quality,
             cost=selected.cost,
             latency_ms=selected.latency_ms,
             reason=(
@@ -109,6 +187,7 @@ class NLPTaskRouter:
             metadata={
                 "candidate_count": len(candidates),
                 "language": language,
+                "learning_samples": sample_count,
             },
         )
 
@@ -134,7 +213,30 @@ class NLPTaskRouter:
             max_latency_ms=max_latency_ms,
         )
         profile = self.registry.get(selection.provider)
-        result = profile.provider.analyze(text, **kwargs)
+        started_at = perf_counter()
+
+        try:
+            result = profile.provider.analyze(text, **kwargs)
+        except Exception:
+            self.record_feedback(
+                selection.provider,
+                selection.capability,
+                success=False,
+                latency_ms=(perf_counter() - started_at) * 1000.0,
+                cost=profile.cost,
+            )
+            raise
+
+        confidence = getattr(result, "confidence", None)
+        self.record_feedback(
+            selection.provider,
+            selection.capability,
+            success=True,
+            quality=confidence,
+            confidence=confidence,
+            latency_ms=(perf_counter() - started_at) * 1000.0,
+            cost=profile.cost,
+        )
 
         if hasattr(result, "metadata"):
             result.metadata.update(
