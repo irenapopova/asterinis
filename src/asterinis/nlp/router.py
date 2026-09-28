@@ -114,6 +114,7 @@ class NLPTaskRouter:
         language: str | None = None,
         max_cost: float | None = None,
         max_latency_ms: float | None = None,
+        exclude: set[str] | None = None,
     ) -> NLPProviderSelection:
         task = task.strip().lower()
         if not task:
@@ -124,10 +125,15 @@ class NLPTaskRouter:
             raise ValueError("max_latency_ms cannot be negative.")
 
         language = language.strip().lower() if language else None
+        excluded = exclude or set()
         candidates: list[NLPProviderProfile] = []
 
         for profile in self.registry.profiles():
-            if not profile.enabled or task not in profile.capabilities:
+            if (
+                not profile.enabled
+                or profile.name in excluded
+                or task not in profile.capabilities
+            ):
                 continue
             if language and profile.languages and language not in profile.languages:
                 continue
@@ -191,27 +197,12 @@ class NLPTaskRouter:
             },
         )
 
-    def analyze(
+    def invoke_selection(
         self,
+        selection: NLPProviderSelection,
         text: str,
-        *,
-        task: str = "classification",
-        language: str | None = None,
-        max_cost: float | None = None,
-        max_latency_ms: float | None = None,
         **kwargs: Any,
     ) -> Any:
-        if not isinstance(text, str):
-            raise TypeError("text must be a string.")
-        if not text.strip():
-            raise ValueError("text cannot be empty.")
-
-        selection = self.select(
-            task,
-            language=language,
-            max_cost=max_cost,
-            max_latency_ms=max_latency_ms,
-        )
         profile = self.registry.get(selection.provider)
         started_at = perf_counter()
 
@@ -248,3 +239,26 @@ class NLPTaskRouter:
             )
 
         return result
+
+    def analyze(
+        self,
+        text: str,
+        *,
+        task: str = "classification",
+        language: str | None = None,
+        max_cost: float | None = None,
+        max_latency_ms: float | None = None,
+        **kwargs: Any,
+    ) -> Any:
+        if not isinstance(text, str):
+            raise TypeError("text must be a string.")
+        if not text.strip():
+            raise ValueError("text cannot be empty.")
+
+        selection = self.select(
+            task,
+            language=language,
+            max_cost=max_cost,
+            max_latency_ms=max_latency_ms,
+        )
+        return self.invoke_selection(selection, text, **kwargs)

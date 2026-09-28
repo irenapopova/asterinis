@@ -7,9 +7,22 @@ from asterinis.nlp import (
     NLPProviderRegistry,
     NLPResult,
     NLPTaskRouter,
+    NLPFallbackRouter,
 )
 from asterinis.nlp.providers import TextClassifierProvider
 from asterinis.nlp.classification import TextClassifier
+from asterinis.nlp.embeddings import HashEmbeddingProvider
+from asterinis.nlp.providers import (
+    EmbeddingNLPProvider,
+    FastTextLanguageProvider,
+    LanguageNLPProvider,
+    SentenceTransformerEmbeddingProvider,
+    SentimentNLPProvider,
+    TransformersSentimentProvider,
+)
+from asterinis.nlp.language import LanguageDetector
+from asterinis.nlp.evaluation import evaluate_labels
+from asterinis.nlp.models import ModelCard, NLPModelRegistry
 
 
 class StubProvider(NLPProvider):
@@ -21,6 +34,11 @@ class StubProvider(NLPProvider):
             text=text,
             intent=self.label,
         )
+
+
+class FailingProvider(NLPProvider):
+    def analyze(self, text: str, **kwargs) -> NLPResult:
+        raise RuntimeError("provider unavailable")
 
 
 def test_nlp_registry_registers_and_retrieves_provider() -> None:
@@ -210,3 +228,137 @@ def test_nlp_router_records_feedback_after_analysis() -> None:
     assert len(records) == 1
     assert records[0].query_type == "classification"
     assert records[0].success
+
+
+def test_nlp_fallback_router_uses_next_provider() -> None:
+    router = NLPTaskRouter()
+    router.register(
+        "primary",
+        FailingProvider(),
+        capabilities={"classification"},
+        quality=0.99,
+    )
+    router.register(
+        "fallback",
+        StubProvider("fallback"),
+        capabilities={"classification"},
+        quality=0.80,
+    )
+
+    result = NLPFallbackRouter(router).analyze(
+        "A simple sentence.",
+        task="classification",
+    )
+
+    assert result.intent == "fallback"
+    assert result.metadata["provider"] == "fallback"
+    assert result.metadata["fallback_attempts"] == 2
+    assert result.metadata["fallback_failures"] == [
+        "primary: RuntimeError"
+    ]
+
+
+def test_nlp_fallback_router_respects_max_attempts() -> None:
+    router = NLPTaskRouter()
+    router.register(
+        "primary",
+        FailingProvider(),
+        capabilities={"classification"},
+        quality=0.99,
+    )
+    router.register(
+        "fallback",
+        StubProvider("fallback"),
+        capabilities={"classification"},
+        quality=0.80,
+    )
+
+    with pytest.raises(RoutingError):
+        NLPFallbackRouter(router, max_attempts=1).analyze(
+            "A simple sentence.",
+            task="classification",
+        )
+
+
+def test_local_language_provider() -> None:
+    provider = LanguageNLPProvider(
+        LanguageDetector(lambda text: ("en", 0.99))
+    )
+    result = provider.analyze("Hello world")
+    assert result.language == "en"
+    assert result.confidence == 0.99
+
+
+def test_local_sentiment_provider() -> None:
+    result = SentimentNLPProvider().analyze("This is excellent.")
+    assert result.intent == "positive"
+    assert result.metadata["sentiment"] == "positive"
+
+
+def test_local_embedding_provider() -> None:
+    provider = EmbeddingNLPProvider(HashEmbeddingProvider(dimensions=8))
+    result = provider.analyze("retrieval")
+    assert len(result.metadata["embedding"]) == 8
+    assert result.metadata["dimensions"] == 8
+
+
+def test_sentence_transformer_provider_with_injected_model() -> None:
+    class FakeModel:
+        def encode(self, text: str) -> list[float]:
+            return [0.1, 0.2, 0.3]
+
+    provider = SentenceTransformerEmbeddingProvider(model=FakeModel())
+    result = provider.analyze("semantic text")
+
+    assert result.metadata["embedding"] == [0.1, 0.2, 0.3]
+    assert result.metadata["dimensions"] == 3
+
+
+def test_transformers_sentiment_provider_with_injected_pipeline() -> None:
+    provider = TransformersSentimentProvider(
+        pipeline=lambda text: [{"label": "POSITIVE", "score": 0.97}]
+    )
+    result = provider.analyze("Great result")
+
+    assert result.intent == "positive"
+    assert result.confidence == 0.97
+
+
+def test_fasttext_language_provider_with_injected_model() -> None:
+    class FakeModel:
+        def predict(self, text: str, k: int) -> tuple[list[str], list[float]]:
+            return ["__label__en"], [0.99]
+
+    provider = FastTextLanguageProvider(model=FakeModel())
+    result = provider.analyze("Hello world")
+
+    assert result.language == "en"
+    assert result.confidence == 0.99
+
+
+def test_model_registry_loads_models_lazily() -> None:
+    registry = NLPModelRegistry()
+    created = []
+
+    def factory() -> NLPProvider:
+        created.append(True)
+        return StubProvider("local")
+
+    registry.register(
+        ModelCard(name="local-model", task="classification"),
+        factory,
+    )
+
+    assert created == []
+    assert registry.load("local-model") is registry.load("local-model")
+    assert len(created) == 1
+
+
+def test_label_evaluation() -> None:
+    evaluation = evaluate_labels(
+        ["positive", "negative", "neutral"],
+        ["positive", "negative", "positive"],
+    )
+    assert evaluation.total == 3
+    assert evaluation.correct == 2
+    assert evaluation.accuracy == 2 / 3
